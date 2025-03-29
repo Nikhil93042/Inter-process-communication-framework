@@ -1,1 +1,2 @@
-# Inter-process-communication-framework
+# Advanced-Disk-Scheduling-Simulator
+Advanced Disk Scheduling Simulator
