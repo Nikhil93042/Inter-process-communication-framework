@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPC Visualization Enhanced</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Background canvas */
+        #backgroundCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom right, #0f2027, #203a43, #2c5364);
+        }
+
+        /* App container */
+        #app {
+            position: relative;
+            z-index: 1;
+            padding: 2rem;
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            color: #00ffe0;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        fieldset {
+            border: 1px solid #00ffe0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        legend {
+            padding: 0 0.5rem;
+            color: #00ffe0;
+        }
+
+        label {
+            margin-right: 0.5rem;
+        }
+
+        input, select, button {
+            padding: 0.5rem;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+            border-radius: 4px;
+            border: none;
+        }
+
+        button {
+            background-color: #00ffe0;
+            color: #000;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #00ccaa;
+        }
+
+        .process-selection, .message-input-area {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .arrow {
+            font-size: 1.2rem;
+        }
+
+        .visualization-area {
+            text-align: center;
+        }
+
+        canvas#canvas {
+            border: 2px solid #00ffe0;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .log-area {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .visually-hidden {
+            position: absolute !important;
+            height: 1px; width: 1px;
+            overflow: hidden;
+            clip: rect(1px, 1px, 1px, 1px);
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background canvas -->
+    <canvas id="backgroundCanvas"></canvas>
+
+    <!-- Main application container -->
+    <div id="app">
+
+        <header class="app-header">
+            <h1>Inter-Process Communication Visualization</h1>
+        </header>
+
+        <main>
+            <section id="controls" aria-labelledby="controls-heading">
+                <h2 id="controls-heading" class="visually-hidden">Simulation Controls</h2>
+
+                <fieldset class="control-group simulation-settings">
+                    <legend>Simulation Settings</legend>
+                    <div>
+                        <label for="ipcType">IPC Mechanism:</label>
+                        <select id="ipcType">
+                            <option value="pipe">Named Pipe</option>
+                            <option value="messageQueue">Message Queue</option>
+                            <option value="sharedMemory">Shared Memory</option>
+                        </select>
+                    </div>
+                    <div class="simulation-actions">
+                        <button id="startBtn">Start Simulation</button>
+                        <button id="resetBtn">Reset</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="control-group message-sending">
+                    <legend>Send Message</legend>
+                    <div class="process-selection">
+                        <label for="sourceProcess">From:</label>
+                        <select id="sourceProcess">
+                            <option value="1">Process 1</option>
+                            <option value="2">Process 2</option>
+                        </select>
+                        <span class="arrow" aria-hidden="true">→</span>
+                        <label for="targetProcess">To:</label>
+                        <select id="targetProcess">
+                            <option value="2">Process 2</option>
+                            <option value="1">Process 1</option>
+                        </select>
+                    </div>
+                    <div class="message-input-area">
+                        <label for="messageInput">Message:</label>
+                        <input type="text" id="messageInput" placeholder="Enter message content" class="message-input">
+                        <button id="sendBtn">Send</button>
+                    </div>
+                </fieldset>
+            </section>
+
+            <section class="visualization-area" aria-labelledby="visualization-heading">
+                <h2 id="visualization-heading" class="visually-hidden">IPC Visualization</h2>
+                <canvas id="canvas" width="800" height="400" role="img" aria-label="Visualization of Inter-Process Communication">
+                    Your browser does not support the HTML canvas tag.
+                </canvas>
+            </section>
+
+            <section id="log" class="log-area" aria-labelledby="log-heading">
+                <h3 id="log-heading">Event Log</h3>
+                <div id="logContent" role="log" aria-live="polite">
+                    <!-- Log messages will appear here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Background animation logic
+        const bgCanvas = document.getElementById('backgroundCanvas');
+        const ctx = bgCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        for (let i = 0; i < 50; i++) {
+            particles.push({
+                x: Math.random() * bgCanvas.width,
+                y: Math.random() * bgCanvas.height,
+                radius: Math.random() * 3 + 1,
+                speedX: Math.random() * 1.5 + 0.5,
+                speedY: Math.random() * 1.5 - 0.75
+            });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = "#00ffcc88";
+                ctx.fill();
+
+                p.x += p.speedX;
+                p.y += p.speedY;
+
+                if (p.x > bgCanvas.width) p.x = 0;
+                if (p.y > bgCanvas.height) p.y = 0;
+                if (p.y < 0) p.y = bgCanvas.height;
+            });
+
+            requestAnimationFrame(animateParticles);
+        }
+
+        animateParticles();
+
+        // (You can add the rest of your simulation JS logic here)
+    </script>
+    <script src="ss.js"></script>
+</body>
+</html>
